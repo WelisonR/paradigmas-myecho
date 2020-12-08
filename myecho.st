@@ -1,7 +1,12 @@
 #! /bin/sh
 "exec" "gst" "$0" "--smalltalk-args" "$@"
 
-DEFAULT_ECHO_TO_XPG := false .
+Smalltalk at: #PACKAGE_NAME put: 'GNU coreutils' .
+Smalltalk at: #PROGRAM_NAME put: 'echo'.
+Smalltalk at: #PROGRAM_VERSION put: '1.00' .
+Smalltalk at: #AUTHORS put: #('Welison Regis') .
+
+Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false .
 
 Object subclass: Echo [
     | argc argv |
@@ -13,14 +18,25 @@ Object subclass: Echo [
         ^r .
     ]
 
+    init [
+        (argc = 1) ifTrue: [
+            ((argv at: 1) = '--help') ifTrue: [
+                self showHelp .
+            ] .
+            ((argv at: 1) = '--version') ifTrue: [
+                self showVersion .
+            ] .
+        ] .
+    ]
+
     setArguments: args [
         argc := args size .
         argv := args .
     ]
 
     showHelp [
-        Transcript show: 'Uso: echo [OPÇÃO-CURTA]... [TEXTO]...' ; cr ;
-        show: ' ou: echo OPÇÃO-LONGA' ; cr ;
+        Transcript show: 'Uso: ', PROGRAM_NAME, ' [OPÇÃO-CURTA]... [TEXTO]...' ; cr .
+        Transcript show: ' ou: ', PROGRAM_NAME, ' OPÇÃO-LONGA' ; cr ;
         show: 'Ecoa o(s) TEXTO(s) para a saída padrão.' ; cr ;
         cr ;
         show: '  -n             não emitir o caractere de nova linha do final do TEXTO' ; cr ;
@@ -60,11 +76,42 @@ Object subclass: Echo [
         show: 'ou disponível localmente via: info "(coreutils) echo invocation"' ; cr .
     ]
 
+    showVersion [
+        Transcript show: PROGRAM_NAME, ' (', PACKAGE_NAME, ') ', PROGRAM_VERSION ; cr ;
+        show: 'Copyright (C) 2018 Free Software Foundation, Inc.' ; cr ;
+        show: 'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>' ; cr ;
+        show: 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.' ; cr ;
+        show: 'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.' ; cr ;
+        cr .
+        self displayAuthors .
+    ]
+
+    displayAuthors [
+        Transcript show: 'Escrito por ' .
+        1 to: (AUTHORS size) do: [ :index |
+            (index = 1)
+                ifTrue: [
+                    Transcript show: (AUTHORS at: 1) .
+                ]
+                ifFalse: [
+                    ((index = AUTHORS size))
+                        ifTrue: [
+                            Transcript show: ' e ', (AUTHORS at: index) .
+                        ]
+                        ifFalse: [
+                            Transcript show: ', ', (AUTHORS at: index) .
+                        ] .
+                ] .
+        ] .
+        Transcript show: '.' ; cr .
+    ]
+
     printOn: stream [
         argc printOn: stream .
     ]
 ]
 
 echo := Echo new: Smalltalk arguments .
+echo init .
 " echo showHelp . "
-echo printNl .
+" echo printNl . "
