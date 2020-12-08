@@ -18,7 +18,7 @@ Object subclass: Echo [
         ^r .
     ]
 
-    init [
+    programInfo [
         (argc = 1) ifTrue: [
             ((argv at: 1) = '--help') ifTrue: [
                 self showHelp .
@@ -32,6 +32,10 @@ Object subclass: Echo [
     setArguments: args [
         argc := args size .
         argv := args .
+    ]
+
+    getEnv: name [
+        ^Smalltalk getenv: name
     ]
 
     showHelp [
@@ -112,6 +116,6 @@ Object subclass: Echo [
 ]
 
 echo := Echo new: Smalltalk arguments .
-echo init .
+echo programInfo .
 " echo showHelp . "
 " echo printNl . "
