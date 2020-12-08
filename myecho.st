@@ -4,21 +4,18 @@
 DEFAULT_ECHO_TO_XPG := false .
 
 Object subclass: Echo [
-    | arguments |
+    | argc argv |
+
     Echo class >> new: args [
         | r |
         r := super new .
         r setArguments: args .
-        " r init . "
         ^r .
     ]
 
-    " init: [
-        
-    ] "
-
     setArguments: args [
-        arguments := args .
+        argc := args size .
+        argv := args .
     ]
 
     showHelp [
@@ -28,11 +25,11 @@ Object subclass: Echo [
         cr ;
         show: '  -n             não emitir o caractere de nova linha do final do TEXTO' ; cr ;
         show: '  -e             habilita a interpretação de escape por barra invertida' ; cr .
-        (DEFAULT_ECHO_TO_XPG == true) ifTrue: [
+        (DEFAULT_ECHO_TO_XPG = true) ifTrue: [
             Transcript show: '                   (padrão)' ; cr .
         ] .
         Transcript show: '  -E             desabilita a interpretação de escape por barra invertida' ; cr .
-        (DEFAULT_ECHO_TO_XPG == false) ifTrue: [
+        (DEFAULT_ECHO_TO_XPG = false) ifTrue: [
             Transcript show: '                   (padrão)' ; cr .
         ] .
         Transcript show: '      --help     mostra esta ajuda e sai' ; cr ;
@@ -64,7 +61,7 @@ Object subclass: Echo [
     ]
 
     printOn: stream [
-        arguments printOn: stream .
+        argc printOn: stream .
     ]
 ]
 
