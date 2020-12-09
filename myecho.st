@@ -9,29 +9,83 @@ Smalltalk at: #AUTHORS put: #('Welison Regis') .
 Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false .
 
 Object subclass: Echo [
-    | argc argv |
+    | argc argv break_line escape_char message_start_position |
 
     Echo class >> new: args [
         | r |
         r := super new .
+        r setBreakLine: true .
+        r setEscapeChar: DEFAULT_ECHO_TO_XPG .
+        r setMessageStartPosition: 1 .
         r setArguments: args .
+        r init .
         ^r .
+    ]
+
+    init [
+        self programInfo .
+        self computeMessageStartPosition .
+        message_start_position printNl .
     ]
 
     programInfo [
         (argc = 1) ifTrue: [
             ((argv at: 1) = '--help') ifTrue: [
                 self showHelp .
+                ObjectMemory quit: 0 .
             ] .
             ((argv at: 1) = '--version') ifTrue: [
                 self showVersion .
+                ObjectMemory quit: 0 .
             ] .
+        ] .
+    ]
+
+    computeMessageStartPosition [
+        | i word letter number_flags |
+
+        i := 1 .
+        word := (argv at: i) .
+
+        [(i <= argc) and: [(word at: 1) == $-]] whileTrue: [
+            word := (argv at: i) .
+            number_flags := 0 .
+
+            2 to: (word size) do: [ :j |
+                letter := (word at: j) .
+                
+                ((letter ~= $e and: [letter ~= $E]) and: [letter ~= $n]) ifTrue: [
+                    self setMessageStartPosition: i .
+                    ^self .
+                ] .
+
+                number_flags := number_flags + 1 .
+            ] .
+
+            (number_flags == 0) ifTrue: [
+                self setMessageStartPosition: i .
+                ^self .
+            ] .
+
+            i := i + 1 .
         ] .
     ]
 
     setArguments: args [
         argc := args size .
         argv := args .
+    ]
+
+    setBreakLine: status [
+        break_line := status .
+    ]
+
+    setEscapeChar: status [
+        escape_char := status .
+    ]
+
+    setMessageStartPosition: position [
+        message_start_position := position .
     ]
 
     getEnv: name [
@@ -116,6 +170,6 @@ Object subclass: Echo [
 ]
 
 echo := Echo new: Smalltalk arguments .
-echo programInfo .
+" echo init . "
 " echo showHelp . "
 " echo printNl . "
