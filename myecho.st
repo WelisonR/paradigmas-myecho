@@ -50,7 +50,7 @@ Object subclass: Echo [
         | i word letter number_flags |
 
         i := 1 .
-        word := (argv at: i) .
+        (argc > 0) ifTrue: [word := (argv at: i) .] .
 
         [(i <= argc) and: [(word at: 1) == $-]] whileTrue: [
             word := (argv at: i) .
