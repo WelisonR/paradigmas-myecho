@@ -26,9 +26,11 @@ Object subclass: Echo [
         self programInfo .
         self computeMessageStartPosition .
         self computeFlags .
-        message_start_position printNl .
+        self printNoFormat .
+        self evalLineBreak .
+        " message_start_position printNl .
         break_line printNl .
-        escape_char printNl .
+        escape_char printNl . "
     ]
 
     programInfo [
@@ -86,6 +88,21 @@ Object subclass: Echo [
                 (letter == $E) ifTrue: [ self setEscapeChar: false . ] .
                 (letter == $n) ifTrue: [ self setBreakLine: false . ] .
             ] .
+        ] .
+    ]
+
+    printNoFormat [
+        message_start_position to: argc do: [ :i |
+            Transcript show: (argv at: i) .
+            (i ~= argc) ifTrue: [
+                Transcript show: ' ' .
+            ] .
+        ] .
+    ]
+
+    evalLineBreak [
+        (break_line == true) ifTrue: [
+            Transcript cr .
         ] .
     ]
 
