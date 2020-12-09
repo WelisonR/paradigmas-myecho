@@ -25,7 +25,10 @@ Object subclass: Echo [
     init [
         self programInfo .
         self computeMessageStartPosition .
+        self computeFlags .
         message_start_position printNl .
+        break_line printNl .
+        escape_char printNl .
     ]
 
     programInfo [
@@ -55,7 +58,6 @@ Object subclass: Echo [
                 letter := (word at: j) .
                 
                 ((letter ~= $e and: [letter ~= $E]) and: [letter ~= $n]) ifTrue: [
-                    self setMessageStartPosition: i .
                     ^self .
                 ] .
 
@@ -63,11 +65,27 @@ Object subclass: Echo [
             ] .
 
             (number_flags == 0) ifTrue: [
-                self setMessageStartPosition: i .
                 ^self .
             ] .
 
             i := i + 1 .
+            self setMessageStartPosition: i .
+        ] .
+    ]
+
+    computeFlags [
+        | word letter |
+
+        1 to: message_start_position-1 do: [ :i |
+            word := (argv at: i) .
+
+            2 to: (word size) do: [ :j |
+                letter := (word at: j) .
+
+                (letter == $e) ifTrue: [ self setEscapeChar: true . ] .
+                (letter == $E) ifTrue: [ self setEscapeChar: false . ] .
+                (letter == $n) ifTrue: [ self setBreakLine: false . ] .
+            ] .
         ] .
     ]
 
