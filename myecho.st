@@ -99,7 +99,7 @@ Object subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter j |
+        | word letter next_letter j kk |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i) .
@@ -123,6 +123,36 @@ Object subclass: Echo [
                     (letter = $r) ifTrue: [ letter := UnicodeString with: (Character codePoint: 13) ] .
                     (letter = $t) ifTrue: [ letter := UnicodeString with: (Character codePoint: 9) ] .
                     (letter = $v) ifTrue: [ letter := UnicodeString with: (Character codePoint: 11) ] .
+                    (letter = $x) ifTrue: [
+                        (j+1 <= (word size)) ifTrue: [
+                            j := j + 1 .
+                            next_letter := (word at: j) .
+                            ((self isHexadecimalDigit: next_letter) == true)
+                                ifTrue: [
+                                    letter := (self hexadecimalToInteger: next_letter) .
+                                    (j+1 <= (word size)) ifTrue: [
+                                        j := j + 1 .
+                                        next_letter := (word at: j) .
+
+                                        ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
+                                            letter := (letter * 16 + (self hexadecimalToInteger: next_letter)) asInteger .
+                                        ]
+                                        ifFalse: [
+                                            j := j - 1 .
+                                        ] .
+                                    ] .
+
+                                    letter := UnicodeString with: (Character codePoint: letter) .
+                                ]
+                                ifFalse: [
+                                    j := j - 1 .
+                                    Transcript show: '\' asString .
+                                ] .
+                        ]
+                        ifFalse: [
+                            Transcript show: '\' asString .
+                        ] .
+                    ] .
                 ] .
 
                 Transcript show: letter asString .
@@ -149,6 +179,31 @@ Object subclass: Echo [
         (break_line == true) ifTrue: [
             Transcript cr .
         ] .
+    ]
+
+    isHexadecimalDigit: letter [
+        | hexadecimalDigits hexadecimalLetters hexadecimals isHexadecimal |
+
+        hexadecimalDigits := #($0 $1 $2 $3 $4 $5 $6 $7 $8 $9) .
+        hexadecimalLetters := #($A $B $C $D $E $F $a $b $c $d $e $f) .
+        hexadecimals := hexadecimalDigits, hexadecimalLetters .
+        isHexadecimal := hexadecimals includes: letter .
+
+        ^isHexadecimal .
+    ]
+
+    hexadecimalToInteger: letter [
+        | intLetter |
+
+        intLetter := ((letter asciiValue) - ($0 asciiValue)) .
+        (letter == $a or: [letter == $A]) ifTrue: [ intLetter := 10 ] .
+        (letter == $b or: [letter == $B]) ifTrue: [ intLetter := 11 ] .
+        (letter == $c or: [letter == $C]) ifTrue: [ intLetter := 12 ] .
+        (letter == $d or: [letter == $D]) ifTrue: [ intLetter := 13 ] .
+        (letter == $e or: [letter == $E]) ifTrue: [ intLetter := 14 ] .
+        (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ] .
+
+        ^intLetter .
     ]
 
     setArguments: args [
