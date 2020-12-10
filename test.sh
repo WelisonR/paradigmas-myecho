@@ -50,6 +50,10 @@ ECHO_ARGUMENTS=(
     '-e "\xJJ"'
     '-e "\xJJJ"'
     '-E "\xJJ"'
+    '-e "\xFG"'
+    '-e "\x"'
+    '-e "\xF"'
+    '-e "\x \xFG"'
     # Test with valid numeric conversitions
     '-e "\0111"'
     '-e "\0101"'
