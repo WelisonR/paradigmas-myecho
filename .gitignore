@@ -1,0 +1,3 @@
+# Ignore output files used by tests
+myecho.out
+echo.out
