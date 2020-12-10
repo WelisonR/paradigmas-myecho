@@ -26,11 +26,12 @@ Object subclass: Echo [
         self programInfo .
         self computeMessageStartPosition .
         self computeFlags .
-        self printNoFormat .
+        " self printWithoutSpecialChar . "
         self evalLineBreak .
+        self printWithSpecialChar .
         " message_start_position printNl .
         break_line printNl .
-        escape_char printNl . "
+        escape_char printNl .  "
     ]
 
     programInfo [
@@ -91,7 +92,45 @@ Object subclass: Echo [
         ] .
     ]
 
-    printNoFormat [
+    printWithSpecialChar [
+        | word letter j |
+
+        message_start_position to: argc do: [ :i |
+            word := (argv at: i) .
+            j := 1 .
+
+            [j <= (word size)] whileTrue: [
+                letter := (word at: j) .
+
+                (letter == $\ and: [j+1 <= (word size)]) ifTrue: [ 
+                    j := j + 1 .
+                    letter := (word at: j) .
+
+                    "Caracteres especiais:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
+                    (letter = $/) ifTrue: [ letter := UnicodeString with: (Character codePoint: 92) ] .
+                    (letter = $a) ifTrue: [ letter := UnicodeString with: (Character codePoint: 7) ] .
+                    (letter = $b) ifTrue: [ letter := UnicodeString with: (Character codePoint: 8) ] .
+                    (letter = $c) ifTrue: [ ObjectMemory quit: 0 ] .
+                    (letter = $e) ifTrue: [ letter := UnicodeString with: (Character codePoint: 27) ] .
+                    (letter = $f) ifTrue: [ letter := UnicodeString with: (Character codePoint: 12) ] .
+                    (letter = $n) ifTrue: [ letter := UnicodeString with: (Character codePoint: 10) ] .
+                    (letter = $r) ifTrue: [ letter := UnicodeString with: (Character codePoint: 13) ] .
+                    (letter = $t) ifTrue: [ letter := UnicodeString with: (Character codePoint: 9) ] .
+                    (letter = $v) ifTrue: [ letter := UnicodeString with: (Character codePoint: 11) ] .
+                ] .
+
+                Transcript show: letter asString .
+
+                j := j + 1 .
+            ] .
+
+            (i ~= argc) ifTrue: [
+                Transcript show: ' ' .
+            ] .
+        ] .
+    ]
+
+    printWithoutSpecialChar [
         message_start_position to: argc do: [ :i |
             Transcript show: (argv at: i) .
             (i ~= argc) ifTrue: [
