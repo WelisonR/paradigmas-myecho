@@ -57,10 +57,12 @@ ECHO_ARGUMENTS=(
     # Test with valid numeric conversitions
     '-e "\0111"'
     '-e "\0101"'
+    '-e "\0137"'
     '-e "\x77"'
     '-e "\x77A"'
+    '-e "\x5f"'
     '-E "\xAA"'
-    # Teste com strings aleatórias
+    # Test with random strings
     '-e "Teste com uma string longa... Teste com uma string longa... Teste com uma string longa... Teste com uma string longa..."'
     '-ne "Teste com string aleatório fau\b" "Teste com uma string aleatória... \\" "\n\r..."'
 )

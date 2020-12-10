@@ -1,246 +1,250 @@
 #! /bin/sh
 "exec" "gst" "$0" "--smalltalk-args" "$@"
 
-Smalltalk at: #PACKAGE_NAME put: 'GNU coreutils' .
+Smalltalk at: #PACKAGE_NAME put: 'GNU coreutils'.
 Smalltalk at: #PROGRAM_NAME put: 'echo'.
-Smalltalk at: #PROGRAM_VERSION put: '1.00' .
-Smalltalk at: #AUTHORS put: #('Welison Regis') .
+Smalltalk at: #PROGRAM_VERSION put: '1.00'.
+Smalltalk at: #AUTHORS put: #('Welison Regis').
 
-Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false .
+Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false.
 
 Object subclass: Echo [
     | argc argv break_line escape_char message_start_position |
 
     Echo class >> new: args [
         | r |
-        r := super new .
-        r setupInitialStates .
-        r setArguments: args .
-        r init .
-        ^r .
+        r := super new.
+        r setupInitialStates.
+        r setArguments: args.
+        r init.
+        ^r.
     ]
 
     init [
-        self programInfo .
-        self computeMessageStartPosition .
-        self computeFlags .
-        self echo .
-        self evalLineBreak .
+        self programInfo.
+        self computeMessageStartPosition.
+        self computeFlags.
+        self echo.
+        self evalLineBreak.
     ]
 
     setupInitialStates [
-        self setBreakLine: true .
-        self setEscapeChar: DEFAULT_ECHO_TO_XPG .
-        self setMessageStartPosition: 1 .
+        self setBreakLine: true.
+        self setEscapeChar: DEFAULT_ECHO_TO_XPG.
+        self setMessageStartPosition: 1.
     ]
 
     echo [
         (escape_char == true)
             ifTrue: [ self printWithSpecialChar ]
-            ifFalse: [ self printWithoutSpecialChar ] .
+            ifFalse: [ self printWithoutSpecialChar ].
     ]
 
     programInfo [
         (argc = 1) ifTrue: [
             ((argv at: 1) = '--help') ifTrue: [
-                self showHelp .
-                ObjectMemory quit: 0 .
-            ] .
+                self showHelp.
+                ObjectMemory quit: 0.
+            ].
             ((argv at: 1) = '--version') ifTrue: [
-                self showVersion .
-                ObjectMemory quit: 0 .
-            ] .
-        ] .
+                self showVersion.
+                ObjectMemory quit: 0.
+            ].
+        ].
     ]
 
     computeMessageStartPosition [
         | i word letter number_flags |
 
-        i := 1 .
-        (argc > 0) ifTrue: [word := (argv at: i) .] .
+        i := 1.
+        (argc > 0) ifTrue: [ word := (argv at: i) ].
 
         [(i <= argc) and: [(word at: 1) == $-]] whileTrue: [
-            word := (argv at: i) .
-            number_flags := 0 .
+            word := (argv at: i).
+            number_flags := 0.
 
             2 to: (word size) do: [ :j |
-                letter := (word at: j) .
-                
-                ((letter ~= $e and: [letter ~= $E]) and: [letter ~= $n]) ifTrue: [
-                    ^self .
-                ] .
+                letter := (word at: j).
+                ((letter ~= $e and: [letter ~= $E]) and: [letter ~= $n]) ifTrue: [ ^self ].
+                number_flags := number_flags + 1.
+            ].
 
-                number_flags := number_flags + 1 .
-            ] .
+            (number_flags == 0) ifTrue: [ ^self ].
 
-            (number_flags == 0) ifTrue: [
-                ^self .
-            ] .
-
-            i := i + 1 .
-            self setMessageStartPosition: i .
-        ] .
+            i := i + 1.
+            self setMessageStartPosition: i.
+        ].
     ]
 
     computeFlags [
         | word letter |
 
         1 to: message_start_position-1 do: [ :i |
-            word := (argv at: i) .
+            word := (argv at: i).
 
             2 to: (word size) do: [ :j |
-                letter := (word at: j) .
+                letter := (word at: j).
 
-                (letter == $e) ifTrue: [ self setEscapeChar: true . ] .
-                (letter == $E) ifTrue: [ self setEscapeChar: false . ] .
-                (letter == $n) ifTrue: [ self setBreakLine: false . ] .
-            ] .
-        ] .
+                (letter == $e) ifTrue: [ self setEscapeChar: true. ].
+                (letter == $E) ifTrue: [ self setEscapeChar: false. ].
+                (letter == $n) ifTrue: [ self setBreakLine: false. ].
+            ].
+        ].
     ]
 
     printWithSpecialChar [
-        | word letter next_letter j kk |
+        | word letter next_letter specialLetterDictionary auxiliar j |
 
         message_start_position to: argc do: [ :i |
-            word := (argv at: i) .
-            j := 1 .
+            word := (argv at: i).
+            j := 1.
 
             [j <= (word size)] whileTrue: [
-                letter := (word at: j) .
+                letter := (word at: j).
 
                 (letter == $\ and: [j+1 <= (word size)]) ifTrue: [ 
-                    j := j + 1 .
-                    letter := (word at: j) .
+                    j := j + 1.
+                    letter := (word at: j).
 
-                    "Caracteres especiais:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
-                    (letter = $/) ifTrue: [ letter := UnicodeString with: (Character codePoint: 92) ] .
-                    (letter = $a) ifTrue: [ letter := UnicodeString with: (Character codePoint: 7) ] .
-                    (letter = $b) ifTrue: [ letter := UnicodeString with: (Character codePoint: 8) ] .
-                    (letter = $c) ifTrue: [ ObjectMemory quit: 0 ] .
-                    (letter = $e) ifTrue: [ letter := UnicodeString with: (Character codePoint: 27) ] .
-                    (letter = $f) ifTrue: [ letter := UnicodeString with: (Character codePoint: 12) ] .
-                    (letter = $n) ifTrue: [ letter := UnicodeString with: (Character codePoint: 10) ] .
-                    (letter = $r) ifTrue: [ letter := UnicodeString with: (Character codePoint: 13) ] .
-                    (letter = $t) ifTrue: [ letter := UnicodeString with: (Character codePoint: 9) ] .
-                    (letter = $v) ifTrue: [ letter := UnicodeString with: (Character codePoint: 11) ] .
+                    "Special characters:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
+                    specialLetterDictionary := (self getSpecialCharacterDictionary).
+                    (specialLetterDictionary includesKey: letter) ifTrue: [
+                        auxiliar := (specialLetterDictionary at: letter).
+                        letter := UnicodeString with: (Character codePoint: auxiliar).
+                    ].
+                    (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
                     (letter = $x) ifTrue: [
                         (j+1 <= (word size)) ifTrue: [
-                            j := j + 1 .
-                            next_letter := (word at: j) .
-                            ((self isHexadecimalDigit: next_letter) == true)
-                                ifTrue: [
-                                    letter := (self hexadecimalToInteger: next_letter) .
-                                    (j+1 <= (word size)) ifTrue: [
-                                        j := j + 1 .
-                                        next_letter := (word at: j) .
+                            j := j + 1.
+                            next_letter := (word at: j).
 
-                                        ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
-                                            letter := (letter * 16 + (self hexadecimalToInteger: next_letter)) asInteger .
-                                        ]
-                                        ifFalse: [
-                                            j := j - 1 .
-                                        ] .
-                                    ] .
+                            ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
+                                letter := (self hexadecimalToInteger: next_letter).
+                                (j+1 <= (word size)) ifTrue: [
+                                    j := j + 1.
+                                    next_letter := (word at: j).
 
-                                    letter := UnicodeString with: (Character codePoint: letter) .
-                                ]
-                                ifFalse: [
-                                    j := j - 1 .
-                                    Transcript show: '\' asString .
-                                ] .
-                        ]
-                        ifFalse: [
-                            Transcript show: '\' asString .
-                        ] .
-                    ] .
-                ] .
+                                    ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
+                                        auxiliar := (self hexadecimalToInteger: next_letter).
+                                        letter := (letter * 16 + auxiliar) asInteger.
+                                    ] ifFalse: [
+                                        j := j - 1.
+                                    ].
+                                ].
+                                letter := UnicodeString with: (Character codePoint: letter).
+                            ] ifFalse: [
+                                j := j - 1.
+                                Transcript show: '\' asString.
+                            ]
+                        ] ifFalse: [
+                            Transcript show: '\' asString.
+                        ].
+                    ]
+                ].
 
-                Transcript show: letter asString .
+                Transcript show: letter asString.
 
-                j := j + 1 .
-            ] .
+                j := j + 1.
+            ].
 
             (i ~= argc) ifTrue: [
-                Transcript show: ' ' .
-            ] .
-        ] .
+                Transcript show: ' '.
+            ].
+        ].
     ]
 
     printWithoutSpecialChar [
         message_start_position to: argc do: [ :i |
-            Transcript show: (argv at: i) .
+            Transcript show: (argv at: i).
             (i ~= argc) ifTrue: [
-                Transcript show: ' ' .
-            ] .
-        ] .
+                Transcript show: ' '.
+            ].
+        ].
     ]
 
     evalLineBreak [
         (break_line == true) ifTrue: [
-            Transcript cr .
-        ] .
+            Transcript cr.
+        ].
+    ]
+
+    getSpecialCharacterDictionary [
+        | specialLetterDictionary |
+
+        specialLetterDictionary := Dictionary new.
+        specialLetterDictionary at: $/ put: 92.
+        specialLetterDictionary at: $a put: 7.
+        specialLetterDictionary at: $b put: 8.
+        specialLetterDictionary at: $e put: 27.
+        specialLetterDictionary at: $f put: 12.
+        specialLetterDictionary at: $n put: 10.
+        specialLetterDictionary at: $r put: 13.
+        specialLetterDictionary at: $t put: 9.
+        specialLetterDictionary at: $v put: 11.
+
+        ^specialLetterDictionary.
     ]
 
     isHexadecimalDigit: letter [
         | hexadecimalDigits hexadecimalLetters hexadecimals isHexadecimal |
 
-        hexadecimalDigits := #($0 $1 $2 $3 $4 $5 $6 $7 $8 $9) .
-        hexadecimalLetters := #($A $B $C $D $E $F $a $b $c $d $e $f) .
-        hexadecimals := hexadecimalDigits, hexadecimalLetters .
-        isHexadecimal := hexadecimals includes: letter .
+        hexadecimalDigits := #($0 $1 $2 $3 $4 $5 $6 $7 $8 $9).
+        hexadecimalLetters := #($A $B $C $D $E $F $a $b $c $d $e $f).
+        hexadecimals := hexadecimalDigits, hexadecimalLetters.
+        isHexadecimal := hexadecimals includes: letter.
 
-        ^isHexadecimal .
+        ^isHexadecimal.
     ]
 
     hexadecimalToInteger: letter [
         | intLetter |
 
-        intLetter := ((letter asciiValue) - ($0 asciiValue)) .
-        (letter == $a or: [letter == $A]) ifTrue: [ intLetter := 10 ] .
-        (letter == $b or: [letter == $B]) ifTrue: [ intLetter := 11 ] .
-        (letter == $c or: [letter == $C]) ifTrue: [ intLetter := 12 ] .
-        (letter == $d or: [letter == $D]) ifTrue: [ intLetter := 13 ] .
-        (letter == $e or: [letter == $E]) ifTrue: [ intLetter := 14 ] .
-        (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ] .
+        intLetter := ((letter asciiValue) - ($0 asciiValue)).
+        (letter == $a or: [letter == $A]) ifTrue: [ intLetter := 10 ].
+        (letter == $b or: [letter == $B]) ifTrue: [ intLetter := 11 ].
+        (letter == $c or: [letter == $C]) ifTrue: [ intLetter := 12 ].
+        (letter == $d or: [letter == $D]) ifTrue: [ intLetter := 13 ].
+        (letter == $e or: [letter == $E]) ifTrue: [ intLetter := 14 ].
+        (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ].
 
-        ^intLetter .
+        ^intLetter.
     ]
 
     setArguments: args [
-        argc := args size .
-        argv := args .
+        argc := args size.
+        argv := args.
     ]
 
     setBreakLine: status [
-        break_line := status .
+        break_line := status.
     ]
 
     setEscapeChar: status [
-        escape_char := status .
+        escape_char := status.
     ]
 
     setMessageStartPosition: position [
-        message_start_position := position .
+        message_start_position := position.
     ]
 
     getEnv: name [
-        ^Smalltalk getenv: name
+        ^Smalltalk getenv: name.
     ]
 
     showHelp [
-        Transcript show: 'Uso: ', PROGRAM_NAME, ' [OPÇÃO-CURTA]... [TEXTO]...' ; cr .
+        Transcript show: 'Uso: ', PROGRAM_NAME, ' [OPÇÃO-CURTA]... [TEXTO]...' ; cr.
         Transcript show: ' ou: ', PROGRAM_NAME, ' OPÇÃO-LONGA' ; cr ;
         show: 'Ecoa o(s) TEXTO(s) para a saída padrão.' ; cr ;
         cr ;
         show: '  -n             não emitir o caractere de nova linha do final do TEXTO' ; cr ;
-        show: '  -e             habilita a interpretação de escape por barra invertida' ; cr .
+        show: '  -e             habilita a interpretação de escape por barra invertida' ; cr.
         (DEFAULT_ECHO_TO_XPG = true) ifTrue: [
-            Transcript show: '                   (padrão)' ; cr .
-        ] .
-        Transcript show: '  -E             desabilita a interpretação de escape por barra invertida' ; cr .
+            Transcript show: '                   (padrão)' ; cr.
+        ].
+        Transcript show: '  -E             desabilita a interpretação de escape por barra invertida' ; cr.
         (DEFAULT_ECHO_TO_XPG = false) ifTrue: [
-            Transcript show: '                   (padrão)' ; cr .
-        ] .
+            Transcript show: '                   (padrão)' ; cr.
+        ].
         Transcript show: '      --help     mostra esta ajuda e sai' ; cr ;
         show: '      --version  informa a versão e sai' ; cr ;
         show: '' ; cr ;
@@ -266,7 +270,7 @@ Object subclass: Echo [
         show: 'Página de ajuda do GNU coreutils: <https://www.gnu.org/software/coreutils/>' ; cr ;
         show: 'Relate erros de tradução do echo: <https://translationproject.org/team/pt_BR.html>' ; cr ;
         show: 'Documentação completa em: <https://www.gnu.org/software/coreutils/echo>' ; cr ;
-        show: 'ou disponível localmente via: info "(coreutils) echo invocation"' ; cr .
+        show: 'ou disponível localmente via: info "(coreutils) echo invocation"' ; cr.
     ]
 
     showVersion [
@@ -275,36 +279,29 @@ Object subclass: Echo [
         show: 'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>' ; cr ;
         show: 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.' ; cr ;
         show: 'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.' ; cr ;
-        cr .
-        self displayAuthors .
+        cr.
+        self displayAuthors.
     ]
 
     displayAuthors [
-        Transcript show: 'Escrito por ' .
+        Transcript show: 'Escrito por '.
         1 to: (AUTHORS size) do: [ :index |
-            (index = 1)
-                ifTrue: [
-                    Transcript show: (AUTHORS at: 1) .
-                ]
-                ifFalse: [
-                    ((index = AUTHORS size))
-                        ifTrue: [
-                            Transcript show: ' e ', (AUTHORS at: index) .
-                        ]
-                        ifFalse: [
-                            Transcript show: ', ', (AUTHORS at: index) .
-                        ] .
-                ] .
-        ] .
-        Transcript show: '.' ; cr .
+            (index = 1) ifTrue: [
+                Transcript show: (AUTHORS at: 1).
+            ] ifFalse: [
+                ((index = AUTHORS size)) ifTrue: [
+                    Transcript show: ' e ', (AUTHORS at: index).
+                ] ifFalse: [
+                    Transcript show: ', ', (AUTHORS at: index).
+                ].
+            ].
+        ].
+        Transcript show: '.' ; cr.
     ]
 
     printOn: stream [
-        argc printOn: stream .
+        argc printOn: stream.
     ]
 ]
 
-echo := Echo new: Smalltalk arguments .
-" echo init . "
-" echo showHelp . "
-" echo printNl . "
+echo := Echo new: Smalltalk arguments.
