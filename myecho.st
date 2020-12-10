@@ -14,9 +14,7 @@ Object subclass: Echo [
     Echo class >> new: args [
         | r |
         r := super new .
-        r setBreakLine: true .
-        r setEscapeChar: DEFAULT_ECHO_TO_XPG .
-        r setMessageStartPosition: 1 .
+        r setupInitialStates .
         r setArguments: args .
         r init .
         ^r .
@@ -26,12 +24,20 @@ Object subclass: Echo [
         self programInfo .
         self computeMessageStartPosition .
         self computeFlags .
-        " self printWithoutSpecialChar . "
+        self echo .
         self evalLineBreak .
-        self printWithSpecialChar .
-        " message_start_position printNl .
-        break_line printNl .
-        escape_char printNl .  "
+    ]
+
+    setupInitialStates [
+        self setBreakLine: true .
+        self setEscapeChar: DEFAULT_ECHO_TO_XPG .
+        self setMessageStartPosition: 1 .
+    ]
+
+    echo [
+        (escape_char == true)
+            ifTrue: [ self printWithSpecialChar ]
+            ifFalse: [ self printWithoutSpecialChar ] .
     ]
 
     programInfo [
