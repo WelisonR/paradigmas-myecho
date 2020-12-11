@@ -6,6 +6,7 @@ Smalltalk at: #PROGRAM_NAME put: 'echo'.
 Smalltalk at: #PROGRAM_VERSION put: '1.00'.
 Smalltalk at: #AUTHORS put: #('Welison Regis').
 
+" If true, interpret backslash escapes by default. "
 Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false.
 
 Object subclass: System [
@@ -23,7 +24,7 @@ Object subclass: System [
 
     showVersion [
         Transcript show: program_name, ' (', package_name, ') ', program_version ; cr ;
-        show: 'Copyright (C) 2018 Free Software Foundation, Inc.' ; cr ;
+        show: 'Copyright (C) 2020 Welison Regis' ; cr ;
         show: 'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>' ; cr ;
         show: 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.' ; cr ;
         show: 'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.' ; cr ;
@@ -47,6 +48,10 @@ Object subclass: System [
         Transcript show: '.' ; cr.
     ]
 
+    getEnv: name [
+        ^Smalltalk getenv: name.
+    ]
+
     setPackageName: package [
         package_name := package.
     ]
@@ -65,33 +70,56 @@ Object subclass: System [
 ]
 
 System subclass: Echo [
-    | argc argv message_start_position string_index has_break_line_option has_escape_option is_env_echo |
+    | argc argv message_start_argc string_index allow_options has_break_line_option has_escape_option is_env_echo |
 
     Echo class >> new: args [
         | r |
         r := super new: PACKAGE_NAME program_name: PROGRAM_NAME program_version: PROGRAM_VERSION program_authors: AUTHORS.
-        r setDefaultStates.
         r setArguments: args.
+        r setPosixlyCorrect.
+        r setDefaultStates.
         r echo.
         ^r.
     ]
 
+    setArguments: args [
+        argc := args size.
+        argv := args.
+    ]
+
+    setPosixlyCorrect [
+        | posixly_correct has_expected_options use_options |
+
+        " From command info '(coreutils) echo invocation':
+        If the ‘POSIXLY_CORRECT’ environment variable is set, then when ‘echo’’s first argument
+        is not ‘-n’ it outputs option-like arguments instead of treating them as options.
+        For example, ‘echo -ne hello’ outputs ‘-ne hello’ instead of plain ‘hello’. "
+        posixly_correct := (self getEnv: 'POSIXLY_CORRECT').
+        has_expected_options := (((DEFAULT_ECHO_TO_XPG == false) and: [argc >= 1]) and: [(argv at: 1) = '-n']).
+        use_options := ((posixly_correct isNil) or: [has_expected_options]).
+
+        self setAllowOptions: use_options.
+    ]
+
     setDefaultStates [
         self setBreakLine: true.
-        self setEscapeChar: DEFAULT_ECHO_TO_XPG.
+        self setEnvEcho: true.
+        self setEspaceOption: DEFAULT_ECHO_TO_XPG.
         self setMessageStartPosition: 1.
     ]
 
     echo [
         self programInfo.
-        self computeMessageStartPosition.
-        self computeFlags.
+        (allow_options == true) ifTrue: [
+            self computeMessageStartPosition.
+            self computeFlags.
+        ].
         self displayCharacters.
         self evalLineBreak.
     ]
 
     programInfo [
-        (argc == 1) ifTrue: [
+        (argc == 1 and: [allow_options == true]) ifTrue: [
             ((argv at: 1) = '--help') ifTrue: [
                 self showHelp.
                 ObjectMemory quit: 0.
@@ -129,14 +157,14 @@ System subclass: Echo [
     computeFlags [
         | word letter |
 
-        1 to: message_start_position-1 do: [ :i |
+        1 to: message_start_argc-1 do: [ :i |
             word := (argv at: i).
 
             2 to: (word size) do: [ :j |
                 letter := (word at: j).
 
-                (letter == $e) ifTrue: [ self setEscapeChar: true. ].
-                (letter == $E) ifTrue: [ self setEscapeChar: false. ].
+                (letter == $e) ifTrue: [ self setEspaceOption: true. ].
+                (letter == $E) ifTrue: [ self setEspaceOption: false. ].
                 (letter == $n) ifTrue: [ self setBreakLine: false. ].
             ].
         ].
@@ -151,7 +179,7 @@ System subclass: Echo [
     printWithSpecialChar [
         | word letter next_letter specialLetterDictionary temporary is_valid_backslash |
 
-        message_start_position to: argc do: [ :i |
+        message_start_argc to: argc do: [ :i |
             word := (argv at: i).
             string_index := 1.
 
@@ -161,7 +189,7 @@ System subclass: Echo [
                 (letter == $\ and: [string_index+1 <= (word size)]) ifTrue: [
                     self setStringIndex: string_index+1.
                     letter := (word at: string_index).
-                    is_env_echo := true.
+                    self setEnvEcho: true.
                     is_valid_backslash := (self isExpectedBackslash: letter).
 
                     "Special characters: \a, \b, \c, \e, \f, \n, \r, \t e \v"
@@ -202,7 +230,7 @@ System subclass: Echo [
     ]
 
     printWithoutSpecialChar [
-        message_start_position to: argc do: [ :i |
+        message_start_argc to: argc do: [ :i |
             Transcript show: (argv at: i).
             (i ~= argc) ifTrue: [
                 Transcript show: ' '.
@@ -273,12 +301,12 @@ System subclass: Echo [
                         temporary := (self hexadecimalToInteger: next_letter).
                         letter := (letter * 16 + temporary) asInteger.
                     ] ifFalse: [
-                        string_index := string_index - 1.
+                        self setStringIndex: string_index-1.
                     ].
                 ].
                 letter := UnicodeString with: (Character codePoint: letter).
             ] ifFalse: [
-                string_index := string_index - 1.
+                self setStringIndex: string_index-1.
                 Transcript show: '\' asString.
             ]
         ] ifFalse: [
@@ -309,8 +337,8 @@ System subclass: Echo [
             ((self isOctalDigit: next_letter) == true) ifTrue: [
                 letter := next_letter.
             ] ifFalse: [
-                string_index := string_index - 1.
-                is_env_echo := false.
+                self setStringIndex: string_index-1.
+                self setEnvEcho: false.
             ].
         ].
 
@@ -348,29 +376,28 @@ System subclass: Echo [
         ^(all_letters includes: letter).
     ]
 
-    setArguments: args [
-        argc := args size.
-        argv := args.
+    setAllowOptions: status [
+        allow_options := status.
+    ]
+
+    setMessageStartPosition: position [
+        message_start_argc := position.
+    ]
+
+    setEspaceOption: status [
+        has_escape_option := status.
     ]
 
     setBreakLine: status [
         has_break_line_option := status.
     ]
 
-    setEscapeChar: status [
-        has_escape_option := status.
-    ]
-
-    setMessageStartPosition: position [
-        message_start_position := position.
-    ]
-
     setStringIndex: index [
         string_index := index.
     ]
 
-    getEnv: name [
-        ^Smalltalk getenv: name.
+    setEnvEcho: status [
+        is_env_echo := status.
     ]
 
     showHelp [
@@ -413,10 +440,6 @@ System subclass: Echo [
         show: 'Relate erros de tradução do echo: <https://translationproject.org/team/pt_BR.html>' ; cr ;
         show: 'Documentação completa em: <https://www.gnu.org/software/coreutils/echo>' ; cr ;
         show: 'ou disponível localmente via: info "(coreutils) echo invocation"' ; cr.
-    ]
-
-    printOn: stream [
-        argc printOn: stream.
     ]
 ]
 
