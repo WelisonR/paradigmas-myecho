@@ -64,12 +64,8 @@ Object subclass: System [
     ]
 ]
 
-" Object subclass: DisplaySpecialWord [
-
-] "
-
 System subclass: Echo [
-    | argc argv break_line escape_char message_start_position string_index isEnvEcho |
+    | argc argv message_start_position string_index has_break_line_option has_escape_option is_env_echo |
 
     Echo class >> new: args [
         | r |
@@ -80,24 +76,18 @@ System subclass: Echo [
         ^r.
     ]
 
-    echo [
-        self programInfo.
-        self computeMessageStartPosition.
-        self computeFlags.
-        self displayCharacters.
-        self evalLineBreak.
-    ]
-
     setDefaultStates [
         self setBreakLine: true.
         self setEscapeChar: DEFAULT_ECHO_TO_XPG.
         self setMessageStartPosition: 1.
     ]
 
-    displayCharacters [
-        (escape_char == true)
-            ifTrue: [ self printWithSpecialChar ]
-            ifFalse: [ self printWithoutSpecialChar ].
+    echo [
+        self programInfo.
+        self computeMessageStartPosition.
+        self computeFlags.
+        self displayCharacters.
+        self evalLineBreak.
     ]
 
     programInfo [
@@ -152,8 +142,14 @@ System subclass: Echo [
         ].
     ]
 
+    displayCharacters [
+        (has_escape_option == true)
+            ifTrue: [ self printWithSpecialChar ]
+            ifFalse: [ self printWithoutSpecialChar ].
+    ]
+
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary temporary isValidBackslash |
+        | word letter next_letter specialLetterDictionary temporary is_valid_backslash |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
@@ -163,10 +159,10 @@ System subclass: Echo [
                 letter := (word at: string_index).
 
                 (letter == $\ and: [string_index+1 <= (word size)]) ifTrue: [
-                    string_index := string_index + 1.
-                    isEnvEcho := true.
+                    self setStringIndex: string_index+1.
                     letter := (word at: string_index).
-                    isValidBackslash := (self isExpectedBackslash: letter).
+                    is_env_echo := true.
+                    is_valid_backslash := (self isExpectedBackslash: letter).
 
                     "Special characters: \a, \b, \c, \e, \f, \n, \r, \t e \v"
                     specialLetterDictionary := (self getSpecialCharacterDictionary).
@@ -174,31 +170,29 @@ System subclass: Echo [
                         temporary := (specialLetterDictionary at: letter).
                         letter := UnicodeString with: (Character codePoint: temporary).
                     ].
-
-                    (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
-
+                    (letter == $c) ifTrue: [
+                        ObjectMemory quit: 0
+                    ].
                     (letter = $x) ifTrue: [
                         temporary := (self getHexadecimalValue: word).
                         (temporary ~= -1) ifTrue: [ letter := temporary ].
                     ].
-
                     (letter == $0) ifTrue: [
                         letter := (self getFirstOctalDigit: word).
                     ].
-
-                    ((isEnvEcho == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
+                    ((is_env_echo == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
                         letter := (self getSpecialDigitValue: word current_letter: letter).
                     ].
 
                     "Default behaviour: print a backslash"
-                    ((isValidBackslash == false) and: [(letter ~= $\)]) ifTrue: [
+                    ((is_valid_backslash == false) and: [(letter ~= $\)]) ifTrue: [
                         Transcript show: '\' asString .
                     ].
                 ].
 
                 Transcript show: letter asString.
 
-                string_index := string_index + 1.
+                self setStringIndex: string_index+1.
             ].
 
             (i ~= argc) ifTrue: [
@@ -217,7 +211,7 @@ System subclass: Echo [
     ]
 
     evalLineBreak [
-        (break_line == true) ifTrue: [
+        (has_break_line_option == true) ifTrue: [
             Transcript cr.
         ].
     ]
@@ -226,30 +220,54 @@ System subclass: Echo [
         | specialLetterDictionary |
 
         specialLetterDictionary := Dictionary new.
-        specialLetterDictionary at: $a put: 7.
-        specialLetterDictionary at: $b put: 8.
-        specialLetterDictionary at: $e put: 27.
-        specialLetterDictionary at: $f put: 12.
-        specialLetterDictionary at: $n put: 10.
-        specialLetterDictionary at: $r put: 13.
-        specialLetterDictionary at: $t put: 9.
-        specialLetterDictionary at: $v put: 11.
+        specialLetterDictionary add: $a->7;
+                                add: $b->8;
+                                add: $e->27;
+                                add: $f->12;
+                                add: $n->10;
+                                add: $r->13;
+                                add: $t->9;
+                                add: $v->11; yourself. 
 
         ^specialLetterDictionary.
+    ]
+
+    isHexadecimalDigit: letter [
+        | hexadecimalDigits hexadecimalLetters hexadecimals isHexadecimal |
+
+        hexadecimalDigits := #($0 $1 $2 $3 $4 $5 $6 $7 $8 $9).
+        hexadecimalLetters := #($A $B $C $D $E $F $a $b $c $d $e $f).
+        hexadecimals := hexadecimalDigits, hexadecimalLetters.
+        isHexadecimal := hexadecimals includes: letter.
+
+        ^isHexadecimal.
+    ]
+
+    hexadecimalToInteger: letter [
+        | intLetter |
+
+        intLetter := ((letter asciiValue) - ($0 asciiValue)).
+        (letter == $a or: [letter == $A]) ifTrue: [ intLetter := 10 ].
+        (letter == $b or: [letter == $B]) ifTrue: [ intLetter := 11 ].
+        (letter == $c or: [letter == $C]) ifTrue: [ intLetter := 12 ].
+        (letter == $d or: [letter == $D]) ifTrue: [ intLetter := 13 ].
+        (letter == $e or: [letter == $E]) ifTrue: [ intLetter := 14 ].
+        (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ].
+
+        ^intLetter.
     ]
 
     getHexadecimalValue: word [
         | letter next_letter temporary |
 
         letter := -1.
-
         (string_index+1 <= (word size)) ifTrue: [
-            string_index := string_index + 1.
+            self setStringIndex: string_index+1.
             next_letter := (word at: string_index).
             ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
                 letter := (self hexadecimalToInteger: next_letter).
                 (string_index+1 <= (word size)) ifTrue: [
-                    string_index := string_index + 1.
+                    self setStringIndex: string_index+1.
                     next_letter := (word at: string_index).
                     ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
                         temporary := (self hexadecimalToInteger: next_letter).
@@ -270,54 +288,6 @@ System subclass: Echo [
         ^letter.
     ]
 
-    getFirstOctalDigit: word [
-        | letter next_letter |
-        letter := UnicodeString with: (Character codePoint: 0).
-        (string_index+1 <= (word size)) ifTrue: [
-            string_index := string_index + 1.
-            next_letter := (word at: string_index).
-            ((self isOctalDigit: next_letter) == true) ifTrue: [
-                letter := next_letter.
-            ] ifFalse: [
-                string_index := string_index - 1.
-                isEnvEcho := false.
-            ].
-        ].
-
-        ^letter.
-    ]
-
-    getSpecialDigitValue: word current_letter: current_letter [
-        | letter next_letter temporary |
-        (string_index+1 <= (word size)) ifTrue: [
-            letter := ((current_letter asciiValue) - ($0 asciiValue)).
-            string_index := string_index + 1.
-            next_letter := (word at: string_index).
-            temporary := ((next_letter asciiValue) - ($0 asciiValue)).
-            letter := (letter * 8 + temporary) asInteger.
-            (string_index+1 <= (word size)) ifTrue: [
-                string_index := string_index + 1.
-                next_letter := (word at: string_index).
-                temporary := ((next_letter asciiValue) - ($0 asciiValue)).
-                letter := (letter * 8 + temporary) asInteger.
-            ].
-            letter := UnicodeString with: (Character codePoint: letter).
-        ].
-
-        ^letter.
-    ]
-
-    isHexadecimalDigit: letter [
-        | hexadecimalDigits hexadecimalLetters hexadecimals isHexadecimal |
-
-        hexadecimalDigits := #($0 $1 $2 $3 $4 $5 $6 $7 $8 $9).
-        hexadecimalLetters := #($A $B $C $D $E $F $a $b $c $d $e $f).
-        hexadecimals := hexadecimalDigits, hexadecimalLetters.
-        isHexadecimal := hexadecimals includes: letter.
-
-        ^isHexadecimal.
-    ]
-
     isOctalDigit: letter [
         | isOctal |
 
@@ -330,18 +300,41 @@ System subclass: Echo [
         ^isOctal.
     ]
 
-    hexadecimalToInteger: letter [
-        | intLetter |
+    getFirstOctalDigit: word [
+        | letter next_letter |
+        letter := UnicodeString with: (Character codePoint: 0).
+        (string_index+1 <= (word size)) ifTrue: [
+            self setStringIndex: string_index+1.
+            next_letter := (word at: string_index).
+            ((self isOctalDigit: next_letter) == true) ifTrue: [
+                letter := next_letter.
+            ] ifFalse: [
+                string_index := string_index - 1.
+                is_env_echo := false.
+            ].
+        ].
 
-        intLetter := ((letter asciiValue) - ($0 asciiValue)).
-        (letter == $a or: [letter == $A]) ifTrue: [ intLetter := 10 ].
-        (letter == $b or: [letter == $B]) ifTrue: [ intLetter := 11 ].
-        (letter == $c or: [letter == $C]) ifTrue: [ intLetter := 12 ].
-        (letter == $d or: [letter == $D]) ifTrue: [ intLetter := 13 ].
-        (letter == $e or: [letter == $E]) ifTrue: [ intLetter := 14 ].
-        (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ].
+        ^letter.
+    ]
 
-        ^intLetter.
+    getSpecialDigitValue: word current_letter: current_letter [
+        | letter next_letter temporary |
+        (string_index+1 <= (word size)) ifTrue: [
+            letter := ((current_letter asciiValue) - ($0 asciiValue)).
+            self setStringIndex: string_index+1.
+            next_letter := (word at: string_index).
+            temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+            letter := (letter * 8 + temporary) asInteger.
+            (string_index+1 <= (word size)) ifTrue: [
+                self setStringIndex: string_index+1.
+                next_letter := (word at: string_index).
+                temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+                letter := (letter * 8 + temporary) asInteger.
+            ].
+            letter := UnicodeString with: (Character codePoint: letter).
+        ].
+
+        ^letter.
     ]
 
     isExpectedBackslash: letter [
@@ -361,15 +354,19 @@ System subclass: Echo [
     ]
 
     setBreakLine: status [
-        break_line := status.
+        has_break_line_option := status.
     ]
 
     setEscapeChar: status [
-        escape_char := status.
+        has_escape_option := status.
     ]
 
     setMessageStartPosition: position [
         message_start_position := position.
+    ]
+
+    setStringIndex: index [
+        string_index := index.
     ]
 
     getEnv: name [
@@ -383,11 +380,11 @@ System subclass: Echo [
         cr ;
         show: '  -n             não emitir o caractere de nova linha do final do TEXTO' ; cr ;
         show: '  -e             habilita a interpretação de escape por barra invertida' ; cr.
-        (DEFAULT_ECHO_TO_XPG = true) ifTrue: [
+        (DEFAULT_ECHO_TO_XPG == true) ifTrue: [
             Transcript show: '                   (padrão)' ; cr.
         ].
         Transcript show: '  -E             desabilita a interpretação de escape por barra invertida' ; cr.
-        (DEFAULT_ECHO_TO_XPG = false) ifTrue: [
+        (DEFAULT_ECHO_TO_XPG == false) ifTrue: [
             Transcript show: '                   (padrão)' ; cr.
         ].
         Transcript show: '      --help     mostra esta ajuda e sai' ; cr ;
