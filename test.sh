@@ -31,6 +31,7 @@ ECHO_ARGUMENTS=(
     '-ne "T\reste"'
     '-e "T\teste"'
     '-n -e "T\veste"'
+    # '-e "\u"'
     # Test without special chars
     '-E "\\\\\\" "\\"'
     '-n -E "Teste \a"'
@@ -42,7 +43,7 @@ ECHO_ARGUMENTS=(
     '-nE "T\reste"'
     '-n -E "T\veste"'
     '-E "T\teste"'
-    # Test with invalid numeric conversitions
+    # Test with invalid numeric conversitions with flag -e
     '-e "\011"'
     '-e "\0999"'
     '-e "\01111"'
@@ -54,14 +55,29 @@ ECHO_ARGUMENTS=(
     '-e "\x"'
     '-e "\xF"'
     '-e "\x \xFG"'
-    # Test with valid numeric conversitions
+    '-e "\08"'
+    '-e "\0"'
+    # Test with valid numeric conversitions with flag -e
     '-e "\0111"'
     '-e "\0101"'
     '-e "\0137"'
     '-e "\x77"'
     '-e "\x77A"'
     '-e "\x5f"'
-    '-E "\xAA"'
+    # Test with numeric conversitions with flag -E
+    '-E "\0111"'
+    '-E "\x77"'
+    '-E "\x77A"'
+    '-E "\0999"'
+    '-E "\01111"'
+    '-E "\xJ"'
+    '-E "\xJJJ"'
+    '-E "\xFG"'
+    '-E "\x"'
+    '-E "\xF"'
+    '-E "\x \xFG"'
+    '-E "\08"'
+    '-E "\0"'
     # Test with random strings
     '-e "Teste com uma string longa... Teste com uma string longa... Teste com uma string longa... Teste com uma string longa..."'
     '-ne "Teste com string aleatório fau\b" "Teste com uma string aleatória... \\" "\n\r..."'

@@ -93,7 +93,7 @@ Object subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary auxiliar j |
+        | word letter next_letter specialLetterDictionary temporary isOctal isBackslash j |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
@@ -102,18 +102,22 @@ Object subclass: Echo [
             [j <= (word size)] whileTrue: [
                 letter := (word at: j).
 
-                (letter == $\ and: [j+1 <= (word size)]) ifTrue: [ 
+                (letter == $\ and: [j+1 <= (word size)]) ifTrue: [
                     j := j + 1.
+                    isOctal := false.
                     letter := (word at: j).
+                    isBackslash := true.
 
                     "Special characters:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
                     specialLetterDictionary := (self getSpecialCharacterDictionary).
                     (specialLetterDictionary includesKey: letter) ifTrue: [
-                        auxiliar := (specialLetterDictionary at: letter).
-                        letter := UnicodeString with: (Character codePoint: auxiliar).
+                        isBackslash := false.
+                        temporary := (specialLetterDictionary at: letter).
+                        letter := UnicodeString with: (Character codePoint: temporary).
                     ].
                     (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
                     (letter = $x) ifTrue: [
+                        isBackslash := false.
                         (j+1 <= (word size)) ifTrue: [
                             j := j + 1.
                             next_letter := (word at: j).
@@ -125,8 +129,8 @@ Object subclass: Echo [
                                     next_letter := (word at: j).
 
                                     ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
-                                        auxiliar := (self hexadecimalToInteger: next_letter).
-                                        letter := (letter * 16 + auxiliar) asInteger.
+                                        temporary := (self hexadecimalToInteger: next_letter).
+                                        letter := (letter * 16 + temporary) asInteger.
                                     ] ifFalse: [
                                         j := j - 1.
                                     ].
@@ -139,7 +143,43 @@ Object subclass: Echo [
                         ] ifFalse: [
                             Transcript show: '\' asString.
                         ].
-                    ]
+                    ].
+                    (letter == $0) ifTrue: [
+                        isBackslash := false.
+                        letter := UnicodeString with: (Character codePoint: 0).
+                        (j+1 <= (word size)) ifTrue: [
+                            j := j + 1.
+                            next_letter := (word at: j).
+                            ((self isOctalDigit: next_letter) == true) ifTrue: [
+                                letter := next_letter.
+                                isOctal := true.
+                            ] ifFalse: [
+                                j := j - 1.
+                                isOctal := false.
+                            ].
+                        ].
+                    ].
+                    ((isOctal == true) and: [(#($1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
+                        isBackslash := false.
+                        (j+1 <= (word size)) ifTrue: [
+                            letter := ((letter asciiValue) - ($0 asciiValue)).
+                            j := j + 1.
+                            next_letter := (word at: j).
+                            temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+                            letter := (letter * 8 + temporary) asInteger.
+                            (j+1 <= (word size)) ifTrue: [
+                                j := j + 1.
+                                next_letter := (word at: j).
+                                temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+                                letter := (letter * 8 + temporary) asInteger.
+                            ].
+                            letter := UnicodeString with: (Character codePoint: letter).
+                        ].
+                    ].
+                    "Default behaviour: print a backslash"
+                    " (isBackslash == true) ifTrue: [
+                        Transcript show: '\' asString .
+                    ]. "
                 ].
 
                 Transcript show: letter asString.
@@ -194,6 +234,18 @@ Object subclass: Echo [
         isHexadecimal := hexadecimals includes: letter.
 
         ^isHexadecimal.
+    ]
+
+    isOctalDigit: letter [
+        | isOctal |
+
+        ((letter >= $0) and: [letter <= $7]) ifTrue: [
+            isOctal := true.
+        ] ifFalse: [
+            isOctal := false.
+        ].
+
+        ^isOctal.
     ]
 
     hexadecimalToInteger: letter [
