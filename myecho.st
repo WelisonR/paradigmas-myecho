@@ -64,6 +64,10 @@ Object subclass: System [
     ]
 ]
 
+" Object subclass: DisplaySpecialWord [
+
+] "
+
 System subclass: Echo [
     | argc argv break_line escape_char message_start_position |
 
@@ -149,7 +153,7 @@ System subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary temporary isEnvEcho useBackslash j |
+        | word letter next_letter specialLetterDictionary temporary isEnvEcho isValidBackslash j |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
@@ -162,18 +166,16 @@ System subclass: Echo [
                     j := j + 1.
                     isEnvEcho := true.
                     letter := (word at: j).
-                    useBackslash := true.
+                    isValidBackslash := (self isExpectedBackslash: letter).
 
-                    "Special characters:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
+                    "Special characters: \a, \b, \c, \e, \f, \n, \r, \t e \v"
                     specialLetterDictionary := (self getSpecialCharacterDictionary).
                     (specialLetterDictionary includesKey: letter) ifTrue: [
-                        useBackslash := false.
                         temporary := (specialLetterDictionary at: letter).
                         letter := UnicodeString with: (Character codePoint: temporary).
                     ].
                     (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
                     (letter = $x) ifTrue: [
-                        useBackslash := false.
                         (j+1 <= (word size)) ifTrue: [
                             j := j + 1.
                             next_letter := (word at: j).
@@ -199,7 +201,6 @@ System subclass: Echo [
                         ].
                     ].
                     (letter == $0) ifTrue: [
-                        useBackslash := false.
                         letter := UnicodeString with: (Character codePoint: 0).
                         (j+1 <= (word size)) ifTrue: [
                             j := j + 1.
@@ -213,7 +214,6 @@ System subclass: Echo [
                         ].
                     ].
                     ((isEnvEcho == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
-                        useBackslash := false.
                         (j+1 <= (word size)) ifTrue: [
                             letter := ((letter asciiValue) - ($0 asciiValue)).
                             j := j + 1.
@@ -230,7 +230,7 @@ System subclass: Echo [
                         ].
                     ].
                     "Default behaviour: print a backslash"
-                    ((useBackslash == true) and: [(letter ~= $\)]) ifTrue: [
+                    ((isValidBackslash == false) and: [(letter ~= $\)]) ifTrue: [
                         Transcript show: '\' asString .
                     ].
                 ].
@@ -265,7 +265,6 @@ System subclass: Echo [
         | specialLetterDictionary |
 
         specialLetterDictionary := Dictionary new.
-        specialLetterDictionary at: $/ put: 92.
         specialLetterDictionary at: $a put: 7.
         specialLetterDictionary at: $b put: 8.
         specialLetterDictionary at: $e put: 27.
@@ -313,6 +312,17 @@ System subclass: Echo [
         (letter == $f or: [letter == $F]) ifTrue: [ intLetter := 15 ].
 
         ^intLetter.
+    ]
+
+    isExpectedBackslash: letter [
+        | conversion_letters interrupt_letters special_letters all_letters |
+
+        special_letters := #($a $b $e $f $n $r $t $v).
+        interrupt_letters := #($c).
+        conversion_letters := #($x $0 $1 $2 $3 $4 $5 $6 $7).
+        all_letters := special_letters, interrupt_letters, conversion_letters.
+
+        ^(all_letters includes: letter).
     ]
 
     setArguments: args [
