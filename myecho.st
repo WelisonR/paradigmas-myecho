@@ -69,7 +69,7 @@ Object subclass: System [
 ] "
 
 System subclass: Echo [
-    | argc argv break_line escape_char message_start_position string_index |
+    | argc argv break_line escape_char message_start_position string_index isEnvEcho |
 
     Echo class >> new: args [
         | r |
@@ -153,7 +153,7 @@ System subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary temporary isEnvEcho isValidBackslash |
+        | word letter next_letter specialLetterDictionary temporary isValidBackslash |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
@@ -174,40 +174,22 @@ System subclass: Echo [
                         temporary := (specialLetterDictionary at: letter).
                         letter := UnicodeString with: (Character codePoint: temporary).
                     ].
+
                     (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
+
                     (letter = $x) ifTrue: [
-                        temporary := (self getHexadecimalDigit: word).
+                        temporary := (self getHexadecimalValue: word).
                         (temporary ~= -1) ifTrue: [ letter := temporary ].
                     ].
+
                     (letter == $0) ifTrue: [
-                        letter := UnicodeString with: (Character codePoint: 0).
-                        (string_index+1 <= (word size)) ifTrue: [
-                            string_index := string_index + 1.
-                            next_letter := (word at: string_index).
-                            ((self isOctalDigit: next_letter) == true) ifTrue: [
-                                letter := next_letter.
-                            ] ifFalse: [
-                                string_index := string_index - 1.
-                                isEnvEcho := false.
-                            ].
-                        ].
+                        letter := (self getFirstOctalDigit: word).
                     ].
+
                     ((isEnvEcho == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
-                        (string_index+1 <= (word size)) ifTrue: [
-                            letter := ((letter asciiValue) - ($0 asciiValue)).
-                            string_index := string_index + 1.
-                            next_letter := (word at: string_index).
-                            temporary := ((next_letter asciiValue) - ($0 asciiValue)).
-                            letter := (letter * 8 + temporary) asInteger.
-                            (string_index+1 <= (word size)) ifTrue: [
-                                string_index := string_index + 1.
-                                next_letter := (word at: string_index).
-                                temporary := ((next_letter asciiValue) - ($0 asciiValue)).
-                                letter := (letter * 8 + temporary) asInteger.
-                            ].
-                            letter := UnicodeString with: (Character codePoint: letter).
-                        ].
+                        letter := (self getSpecialDigitValue: word current_letter: letter).
                     ].
+
                     "Default behaviour: print a backslash"
                     ((isValidBackslash == false) and: [(letter ~= $\)]) ifTrue: [
                         Transcript show: '\' asString .
@@ -256,7 +238,7 @@ System subclass: Echo [
         ^specialLetterDictionary.
     ]
 
-    getHexadecimalDigit: word [
+    getHexadecimalValue: word [
         | letter next_letter temporary |
 
         letter := -1.
@@ -283,6 +265,43 @@ System subclass: Echo [
             ]
         ] ifFalse: [
             Transcript show: '\' asString.
+        ].
+
+        ^letter.
+    ]
+
+    getFirstOctalDigit: word [
+        | letter next_letter |
+        letter := UnicodeString with: (Character codePoint: 0).
+        (string_index+1 <= (word size)) ifTrue: [
+            string_index := string_index + 1.
+            next_letter := (word at: string_index).
+            ((self isOctalDigit: next_letter) == true) ifTrue: [
+                letter := next_letter.
+            ] ifFalse: [
+                string_index := string_index - 1.
+                isEnvEcho := false.
+            ].
+        ].
+
+        ^letter.
+    ]
+
+    getSpecialDigitValue: word current_letter: current_letter [
+        | letter next_letter temporary |
+        (string_index+1 <= (word size)) ifTrue: [
+            letter := ((current_letter asciiValue) - ($0 asciiValue)).
+            string_index := string_index + 1.
+            next_letter := (word at: string_index).
+            temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+            letter := (letter * 8 + temporary) asInteger.
+            (string_index+1 <= (word size)) ifTrue: [
+                string_index := string_index + 1.
+                next_letter := (word at: string_index).
+                temporary := ((next_letter asciiValue) - ($0 asciiValue)).
+                letter := (letter * 8 + temporary) asInteger.
+            ].
+            letter := UnicodeString with: (Character codePoint: letter).
         ].
 
         ^letter.
