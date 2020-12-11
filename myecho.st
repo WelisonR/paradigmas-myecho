@@ -69,7 +69,7 @@ Object subclass: System [
 ] "
 
 System subclass: Echo [
-    | argc argv break_line escape_char message_start_position |
+    | argc argv break_line escape_char message_start_position string_index |
 
     Echo class >> new: args [
         | r |
@@ -153,19 +153,19 @@ System subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary temporary isEnvEcho isValidBackslash j |
+        | word letter next_letter specialLetterDictionary temporary isEnvEcho isValidBackslash |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
-            j := 1.
+            string_index := 1.
 
-            [j <= (word size)] whileTrue: [
-                letter := (word at: j).
+            [string_index <= (word size)] whileTrue: [
+                letter := (word at: string_index).
 
-                (letter == $\ and: [j+1 <= (word size)]) ifTrue: [
-                    j := j + 1.
+                (letter == $\ and: [string_index+1 <= (word size)]) ifTrue: [
+                    string_index := string_index + 1.
                     isEnvEcho := true.
-                    letter := (word at: j).
+                    letter := (word at: string_index).
                     isValidBackslash := (self isExpectedBackslash: letter).
 
                     "Special characters: \a, \b, \c, \e, \f, \n, \r, \t e \v"
@@ -176,53 +176,32 @@ System subclass: Echo [
                     ].
                     (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
                     (letter = $x) ifTrue: [
-                        (j+1 <= (word size)) ifTrue: [
-                            j := j + 1.
-                            next_letter := (word at: j).
-                            ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
-                                letter := (self hexadecimalToInteger: next_letter).
-                                (j+1 <= (word size)) ifTrue: [
-                                    j := j + 1.
-                                    next_letter := (word at: j).
-                                    ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
-                                        temporary := (self hexadecimalToInteger: next_letter).
-                                        letter := (letter * 16 + temporary) asInteger.
-                                    ] ifFalse: [
-                                        j := j - 1.
-                                    ].
-                                ].
-                                letter := UnicodeString with: (Character codePoint: letter).
-                            ] ifFalse: [
-                                j := j - 1.
-                                Transcript show: '\' asString.
-                            ]
-                        ] ifFalse: [
-                            Transcript show: '\' asString.
-                        ].
+                        temporary := (self getHexadecimalDigit: word).
+                        (temporary ~= -1) ifTrue: [ letter := temporary ].
                     ].
                     (letter == $0) ifTrue: [
                         letter := UnicodeString with: (Character codePoint: 0).
-                        (j+1 <= (word size)) ifTrue: [
-                            j := j + 1.
-                            next_letter := (word at: j).
+                        (string_index+1 <= (word size)) ifTrue: [
+                            string_index := string_index + 1.
+                            next_letter := (word at: string_index).
                             ((self isOctalDigit: next_letter) == true) ifTrue: [
                                 letter := next_letter.
                             ] ifFalse: [
-                                j := j - 1.
+                                string_index := string_index - 1.
                                 isEnvEcho := false.
                             ].
                         ].
                     ].
                     ((isEnvEcho == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
-                        (j+1 <= (word size)) ifTrue: [
+                        (string_index+1 <= (word size)) ifTrue: [
                             letter := ((letter asciiValue) - ($0 asciiValue)).
-                            j := j + 1.
-                            next_letter := (word at: j).
+                            string_index := string_index + 1.
+                            next_letter := (word at: string_index).
                             temporary := ((next_letter asciiValue) - ($0 asciiValue)).
                             letter := (letter * 8 + temporary) asInteger.
-                            (j+1 <= (word size)) ifTrue: [
-                                j := j + 1.
-                                next_letter := (word at: j).
+                            (string_index+1 <= (word size)) ifTrue: [
+                                string_index := string_index + 1.
+                                next_letter := (word at: string_index).
                                 temporary := ((next_letter asciiValue) - ($0 asciiValue)).
                                 letter := (letter * 8 + temporary) asInteger.
                             ].
@@ -237,7 +216,7 @@ System subclass: Echo [
 
                 Transcript show: letter asString.
 
-                j := j + 1.
+                string_index := string_index + 1.
             ].
 
             (i ~= argc) ifTrue: [
@@ -275,6 +254,38 @@ System subclass: Echo [
         specialLetterDictionary at: $v put: 11.
 
         ^specialLetterDictionary.
+    ]
+
+    getHexadecimalDigit: word [
+        | letter next_letter temporary |
+
+        letter := -1.
+
+        (string_index+1 <= (word size)) ifTrue: [
+            string_index := string_index + 1.
+            next_letter := (word at: string_index).
+            ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
+                letter := (self hexadecimalToInteger: next_letter).
+                (string_index+1 <= (word size)) ifTrue: [
+                    string_index := string_index + 1.
+                    next_letter := (word at: string_index).
+                    ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
+                        temporary := (self hexadecimalToInteger: next_letter).
+                        letter := (letter * 16 + temporary) asInteger.
+                    ] ifFalse: [
+                        string_index := string_index - 1.
+                    ].
+                ].
+                letter := UnicodeString with: (Character codePoint: letter).
+            ] ifFalse: [
+                string_index := string_index - 1.
+                Transcript show: '\' asString.
+            ]
+        ] ifFalse: [
+            Transcript show: '\' asString.
+        ].
+
+        ^letter.
     ]
 
     isHexadecimalDigit: letter [
