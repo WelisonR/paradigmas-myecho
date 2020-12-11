@@ -16,15 +16,15 @@ Object subclass: Echo [
         r := super new.
         r setupInitialStates.
         r setArguments: args.
-        r init.
+        r echo.
         ^r.
     ]
 
-    init [
+    echo [
         self programInfo.
         self computeMessageStartPosition.
         self computeFlags.
-        self echo.
+        self displayCharacters.
         self evalLineBreak.
     ]
 
@@ -34,7 +34,7 @@ Object subclass: Echo [
         self setMessageStartPosition: 1.
     ]
 
-    echo [
+    displayCharacters [
         (escape_char == true)
             ifTrue: [ self printWithSpecialChar ]
             ifFalse: [ self printWithoutSpecialChar ].
@@ -93,7 +93,7 @@ Object subclass: Echo [
     ]
 
     printWithSpecialChar [
-        | word letter next_letter specialLetterDictionary temporary isOctal isBackslash j |
+        | word letter next_letter specialLetterDictionary temporary isEnvEcho useBackslash j |
 
         message_start_position to: argc do: [ :i |
             word := (argv at: i).
@@ -104,30 +104,28 @@ Object subclass: Echo [
 
                 (letter == $\ and: [j+1 <= (word size)]) ifTrue: [
                     j := j + 1.
-                    isOctal := false.
+                    isEnvEcho := true.
                     letter := (word at: j).
-                    isBackslash := true.
+                    useBackslash := true.
 
                     "Special characters:  \\, \a, \b, \c, \e, \f, \n, \r, \t e \v"
                     specialLetterDictionary := (self getSpecialCharacterDictionary).
                     (specialLetterDictionary includesKey: letter) ifTrue: [
-                        isBackslash := false.
+                        useBackslash := false.
                         temporary := (specialLetterDictionary at: letter).
                         letter := UnicodeString with: (Character codePoint: temporary).
                     ].
                     (letter == $c) ifTrue: [ ObjectMemory quit: 0 ].
                     (letter = $x) ifTrue: [
-                        isBackslash := false.
+                        useBackslash := false.
                         (j+1 <= (word size)) ifTrue: [
                             j := j + 1.
                             next_letter := (word at: j).
-
                             ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
                                 letter := (self hexadecimalToInteger: next_letter).
                                 (j+1 <= (word size)) ifTrue: [
                                     j := j + 1.
                                     next_letter := (word at: j).
-
                                     ((self isHexadecimalDigit: next_letter) == true) ifTrue: [
                                         temporary := (self hexadecimalToInteger: next_letter).
                                         letter := (letter * 16 + temporary) asInteger.
@@ -145,22 +143,21 @@ Object subclass: Echo [
                         ].
                     ].
                     (letter == $0) ifTrue: [
-                        isBackslash := false.
+                        useBackslash := false.
                         letter := UnicodeString with: (Character codePoint: 0).
                         (j+1 <= (word size)) ifTrue: [
                             j := j + 1.
                             next_letter := (word at: j).
                             ((self isOctalDigit: next_letter) == true) ifTrue: [
                                 letter := next_letter.
-                                isOctal := true.
                             ] ifFalse: [
                                 j := j - 1.
-                                isOctal := false.
+                                isEnvEcho := false.
                             ].
                         ].
                     ].
-                    ((isOctal == true) and: [(#($1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
-                        isBackslash := false.
+                    ((isEnvEcho == true)  and: [(#($0 $1 $2 $3 $4 $5 $6 $7) includes: letter) == true]) ifTrue: [
+                        useBackslash := false.
                         (j+1 <= (word size)) ifTrue: [
                             letter := ((letter asciiValue) - ($0 asciiValue)).
                             j := j + 1.
@@ -177,9 +174,9 @@ Object subclass: Echo [
                         ].
                     ].
                     "Default behaviour: print a backslash"
-                    " (isBackslash == true) ifTrue: [
+                    ((useBackslash == true) and: [(letter ~= $\)]) ifTrue: [
                         Transcript show: '\' asString .
-                    ]. "
+                    ].
                 ].
 
                 Transcript show: letter asString.
