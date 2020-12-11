@@ -8,13 +8,69 @@ Smalltalk at: #AUTHORS put: #('Welison Regis').
 
 Smalltalk at: #DEFAULT_ECHO_TO_XPG put: false.
 
-Object subclass: Echo [
+Object subclass: System [
+    | package_name program_name program_version program_authors |
+
+    System class >> new: package program_name: program program_version: version program_authors: authors [
+        | r |
+        r := super new.
+        r setPackageName: package.
+        r setProgramName: program.
+        r setProgramVersion: version.
+        r setProgramAuthors: authors.
+        ^r.
+    ]
+
+    showVersion [
+        Transcript show: program_name, ' (', package_name, ') ', program_version ; cr ;
+        show: 'Copyright (C) 2018 Free Software Foundation, Inc.' ; cr ;
+        show: 'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>' ; cr ;
+        show: 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.' ; cr ;
+        show: 'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.' ; cr ;
+        cr.
+        self displayAuthors.
+    ]
+
+    displayAuthors [
+        Transcript show: 'Escrito por '.
+        1 to: (program_authors size) do: [ :index |
+            (index = 1) ifTrue: [
+                Transcript show: (program_authors at: 1).
+            ] ifFalse: [
+                ((index = program_authors size)) ifTrue: [
+                    Transcript show: ' e ', (program_authors at: index).
+                ] ifFalse: [
+                    Transcript show: ', ', (program_authors at: index).
+                ].
+            ].
+        ].
+        Transcript show: '.' ; cr.
+    ]
+
+    setPackageName: package [
+        package_name := package.
+    ]
+
+    setProgramName: program [
+        program_name := program.
+    ]
+
+    setProgramVersion: version [
+        program_version := version.
+    ]
+
+    setProgramAuthors: authors [
+        program_authors := authors.
+    ]
+]
+
+System subclass: Echo [
     | argc argv break_line escape_char message_start_position |
 
     Echo class >> new: args [
         | r |
-        r := super new.
-        r setupInitialStates.
+        r := super new: PACKAGE_NAME program_name: PROGRAM_NAME program_version: PROGRAM_VERSION program_authors: AUTHORS.
+        r setDefaultStates.
         r setArguments: args.
         r echo.
         ^r.
@@ -28,7 +84,7 @@ Object subclass: Echo [
         self evalLineBreak.
     ]
 
-    setupInitialStates [
+    setDefaultStates [
         self setBreakLine: true.
         self setEscapeChar: DEFAULT_ECHO_TO_XPG.
         self setMessageStartPosition: 1.
@@ -320,32 +376,6 @@ Object subclass: Echo [
         show: 'Relate erros de tradução do echo: <https://translationproject.org/team/pt_BR.html>' ; cr ;
         show: 'Documentação completa em: <https://www.gnu.org/software/coreutils/echo>' ; cr ;
         show: 'ou disponível localmente via: info "(coreutils) echo invocation"' ; cr.
-    ]
-
-    showVersion [
-        Transcript show: PROGRAM_NAME, ' (', PACKAGE_NAME, ') ', PROGRAM_VERSION ; cr ;
-        show: 'Copyright (C) 2018 Free Software Foundation, Inc.' ; cr ;
-        show: 'Licença GPLv3+: GNU GPL versão 3 ou posterior <https://gnu.org/licenses/gpl.html>' ; cr ;
-        show: 'Este é um software livre: você é livre para alterá-lo e redistribuí-lo.' ; cr ;
-        show: 'NÃO HÁ QUALQUER GARANTIA, na máxima extensão permitida em lei.' ; cr ;
-        cr.
-        self displayAuthors.
-    ]
-
-    displayAuthors [
-        Transcript show: 'Escrito por '.
-        1 to: (AUTHORS size) do: [ :index |
-            (index = 1) ifTrue: [
-                Transcript show: (AUTHORS at: 1).
-            ] ifFalse: [
-                ((index = AUTHORS size)) ifTrue: [
-                    Transcript show: ' e ', (AUTHORS at: index).
-                ] ifFalse: [
-                    Transcript show: ', ', (AUTHORS at: index).
-                ].
-            ].
-        ].
-        Transcript show: '.' ; cr.
     ]
 
     printOn: stream [
