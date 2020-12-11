@@ -34,10 +34,10 @@ Object subclass: System [
     displayAuthors [
         Transcript show: 'Escrito por '.
         1 to: (program_authors size) do: [ :index |
-            (index = 1) ifTrue: [
+            (index == 1) ifTrue: [
                 Transcript show: (program_authors at: 1).
             ] ifFalse: [
-                ((index = program_authors size)) ifTrue: [
+                (index == (program_authors size)) ifTrue: [
                     Transcript show: ' e ', (program_authors at: index).
                 ] ifFalse: [
                     Transcript show: ', ', (program_authors at: index).
@@ -91,7 +91,7 @@ System subclass: Echo [
     ]
 
     programInfo [
-        (argc = 1) ifTrue: [
+        (argc == 1) ifTrue: [
             ((argv at: 1) = '--help') ifTrue: [
                 self showHelp.
                 ObjectMemory quit: 0.
@@ -109,7 +109,7 @@ System subclass: Echo [
         i := 1.
         (argc > 0) ifTrue: [ word := (argv at: i) ].
 
-        [(i <= argc) and: [(word at: 1) == $-]] whileTrue: [
+        [((i <= argc) and: [(word size) > 0]) and: [(word at: 1) == $-]] whileTrue: [
             word := (argv at: i).
             number_flags := 0.
 
@@ -173,7 +173,7 @@ System subclass: Echo [
                     (letter == $c) ifTrue: [
                         ObjectMemory quit: 0
                     ].
-                    (letter = $x) ifTrue: [
+                    (letter == $x) ifTrue: [
                         temporary := (self getHexadecimalValue: word).
                         (temporary ~= -1) ifTrue: [ letter := temporary ].
                     ].

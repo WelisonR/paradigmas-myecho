@@ -79,6 +79,7 @@ ECHO_ARGUMENTS=(
     '-E "\08"'
     '-E "\0"'
     # Test with random strings
+    '"" "a"'
     '-e "Teste com uma string longa... Teste com uma string longa... Teste com uma string longa... Teste com uma string longa..."'
     '-ne "Teste com string aleatório fau\b" "Teste com uma string aleatória... \\" "\n\r..."'
     '-nEe "\n\a\a\t" "123\t0tt9 12\\12039 \x11 \x55 \x5f \0137" "\xTTF \0111111 \09999 \123123 \1239 \adksh \y \g \h\h\h\g\\h\h\\\h"'
