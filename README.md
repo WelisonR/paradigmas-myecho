@@ -5,6 +5,8 @@
 
 ## Sobre o Projeto
 
+**Vídeo sobre o projeto no youtube**: [GNU echo em Smalltalk](https://youtu.be/jkfuAePcw0s).
+
 O trabalho tem por objetivo realizar o porte do código do utilitário _echo_ do _GNU coreutils_ da linguagem _C_ para a linguagem _Smalltalk_ (GNU) com foco no paradigma de Orientação a Objetos, baseado na [documentação oficial da ferramenta](https://www.gnu.org/software/coreutils/manual/html_node/echo-invocation.html#echo-invocation) e no código-fonte disponibilizado no [GitHub](https://github.com/wertarbyte/coreutils/blob/master/src/echo.c). O programa foi desenvolvido com técnicas de Test-driven development (TDD) com testes definidos no script _test.sh_.
 
 Observação: conforme documentado na página oficial do GNU, a fim de evitar interferências do _shell_, deve-se invocar o _echo_ com o comando `env echo`.
